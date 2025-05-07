@@ -3,26 +3,21 @@ from PIL import Image
 import numpy as np
 import tensorflow as tf
 
-# 📌 ชื่อไฟล์ weights จาก Colab
 MODEL_PATH = 'my_checkpoint.weights.h5'
 IMG_SIZE = (224, 224)
 
-# ✅ ใช้ EfficientNetB3 แบบที่คุณเทรนไว้ใน Colab
+# ใช้ EfficientNetB3 แบบเทรนเอง (ไม่มี weights จาก ImageNet)
 def build_model():
     base_model = tf.keras.applications.EfficientNetB3(
         input_shape=(224, 224, 3),
         include_top=False,
-        weights='imagenet',
+        weights=None,  # ❗️ สำคัญ! ใช้ None เพราะตอนเทรนไม่ได้โหลด imagenet
         pooling='max'
     )
-    base_model.trainable = False
-
-    # ✅ ต่อด้วย layer ที่คุณใช้ตอน train
-    x = tf.keras.layers.Dense(5, activation='softmax')(base_model.output)  # 🔁 เปลี่ยน 5 เป็นจำนวนคลาสจริง
+    x = tf.keras.layers.Dense(5, activation='softmax')(base_model.output)
     model = tf.keras.Model(inputs=base_model.input, outputs=x)
     return model
 
-# ✅ โหลด weights
 @st.cache_resource(show_spinner='Loading model…')
 def get_model():
     model = build_model()
@@ -31,12 +26,11 @@ def get_model():
 
 @st.cache_resource
 def load_class_names() -> list[str]:
-    return [f'class_{i}' for i in range(5)]  # เปลี่ยนชื่อ class ตามจริงถ้ามี
+    return [f'class_{i}' for i in range(5)]
 
 model = get_model()
 CLASS_NAMES = load_class_names()
 
-# 🔁 เตรียม UI
 st.set_page_config(page_title="Animal Classifier", page_icon="🐾")
 st.title("🐾 Animal Classifier Demo")
 st.write("Upload an image of an animal and click **Predict** to classify it.")
