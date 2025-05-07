@@ -4,4 +4,3 @@ numpy
 tensorflow
 Path
 h5py
-json
