@@ -1,5 +1,6 @@
 streamlit
-tensorflow
+Image
 numpy
-pillow
+tensorflow
+Path
 h5py
