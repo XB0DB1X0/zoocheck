@@ -2,51 +2,56 @@ import streamlit as st
 from PIL import Image
 import numpy as np
 import tensorflow as tf
-from pathlib import Path
 
-# 📌 ตั้งชื่อไฟล์ให้ตรงกับที่คุณ push ขึ้น GitHub
+# 📌 ชื่อไฟล์ weight ที่คุณอัปโหลดไว้ใน GitHub Repo
 MODEL_PATH = 'my_checkpoint.weights.h5'
 IMG_SIZE = (224, 224)
 
-# 🧠 สร้างโครงสร้างโมเดลให้ตรงกับของจริงที่ใช้ใน Google Colab
+# 🧠 โมเดลต้องใช้ EfficientNetB3 แบบเดียวกับตอนเทรนใน Colab
 def build_model():
-    model = tf.keras.Sequential(name='animal_model')
-    model.add(tf.keras.layers.Input(shape=(224, 224, 3), name='input_layer'))
-    model.add(tf.keras.layers.Conv2D(32, 3, activation='relu', name='conv2d'))
-    model.add(tf.keras.layers.MaxPooling2D(name='maxpool'))
-    model.add(tf.keras.layers.Flatten(name='flatten'))
-    model.add(tf.keras.layers.Dense(5, activation='softmax', name='dense'))  # 🔁 แก้ 5 เป็นจำนวนคลาสจริง
+    base_model = tf.keras.applications.EfficientNetB3(
+        input_shape=(224, 224, 3),
+        include_top=False,
+        weights='imagenet',
+        pooling='max'
+    )
+    base_model.trainable = False  # Freeze base model
+
+    model = tf.keras.Sequential([
+        base_model,
+        tf.keras.layers.Dense(5, activation='softmax')  # 🔁 แก้เป็นจำนวน class จริงถ้ามีมากกว่า 5
+    ])
     return model
 
-# ✅ โหลด weights แบบถูกต้อง
+# ✅ โหลด weights ที่บันทึกไว้จาก Colab
 @st.cache_resource(show_spinner='Loading model…')
 def get_model():
     model = build_model()
     model.load_weights(MODEL_PATH)
     return model
 
-# ✅ ตั้งชื่อ class แบบกำหนดเอง
+# ✅ ถ้าไม่มี labels.txt หรือใน .h5 ไม่มี class name ให้กำหนดเอง
 @st.cache_resource
 def load_class_names() -> list[str]:
-    return [f'class_{i}' for i in range(5)]  # 🔁 แก้ชื่อคลาสจริงถ้ามี เช่น ['cat', 'dog', ...]
+    return [f'class_{i}' for i in range(5)]  # 🔁 ใส่ชื่อจริง เช่น ['cat', 'dog', 'horse', ...]
 
 CLASS_NAMES = load_class_names()
 model = get_model()
 
-# 🖼️ UI
+# 📸 เตรียม UI
 st.set_page_config(page_title="Animal Classifier", page_icon="🐾")
 st.title("🐾 Animal Classifier Demo")
 st.write("Upload an image of an animal and click **Predict** to classify it.")
 
 uploaded = st.file_uploader("Choose an image", type=['jpg', 'jpeg', 'png'])
 
-# 🔁 เตรียมภาพ
+# 🔁 เตรียมภาพก่อนทำนาย
 def preprocess_image(image: Image.Image) -> np.ndarray:
     image = image.convert('RGB').resize(IMG_SIZE)
     arr = np.array(image) / 255.0
     return np.expand_dims(arr, axis=0)
 
-# 🔮 ทำนาย
+# 🔮 ทำนายภาพ
 if uploaded is not None:
     img = Image.open(uploaded)
     st.image(img, caption="Uploaded image", use_column_width=True)
